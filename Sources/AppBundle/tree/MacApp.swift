@@ -66,7 +66,8 @@ final class MacApp: AbstractApp {
             $axTaskLocalAppThreadToken.withValue(AxAppThreadToken(pid: pid, idForDebug: nsApp.idForDebug)) {
                 let axApp = AXUIElementCreateApplication(nsApp.processIdentifier)
                 let handlers: HandlerToNotifKeyMapping = unsafe [
-                    (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
+                    (windowCreatedObs, [kAXWindowCreatedNotification]),
+                    (refreshObs, [kAXFocusedWindowChangedNotification]),
                 ]
                 let job = RunLoopJob(.cancellable)
                 let subscriptions = (try? unsafe AxSubscription.bulkSubscribe(nsApp, axApp, job, handlers)) ?? []
@@ -153,6 +154,55 @@ final class MacApp: AbstractApp {
             guard let window = windows.threadGuarded[windowId] else { return }
             try? window.setFrameIfNeeded(app: axApp.threadGuarded, topLeft, size, job)
         } ?? .cancelled
+    }
+
+    /// Move the window to `topLeft` first, and only then resize it. Unlike `setAxFrame`, the order guarantees that the
+    /// resize isn't visible when `topLeft` is off-screen. Returns the frame that the window ended up with
+    func moveAndThenResize(_ windowId: UInt32, _ topLeft: CGPoint, _ size: CGSize, _ cm: CancellationMode) async throws -> Rect? {
+        setFrameJobs.removeValue(forKey: windowId)?.cancel()
+        return try await withWindow(windowId, cm) { [axApp] window, job in
+            try disableAnimations(app: axApp.threadGuarded, job) {
+                window.set(Ax.topLeftCornerAttr, topLeft)
+                try job.checkCancellation()
+                window.set(Ax.sizeAttr, size)
+                try job.checkCancellation()
+                return try AppBundle.getAxRect(window: window, job: job)
+            }
+        }
+    }
+
+    /// The frame of the window if the window is going to be tiled (not a dialog, not a popup, etc), `nil` otherwise.
+    /// It's used by new window animation to start dealing with the new window as soon as we get notified about it
+    /// (the complete refresh session takes ~80ms to reach the layout of the new window)
+    func getNewTilingWindowRect(_ windowId: UInt32, _ windowLevel: MacOsWindowLevel?) async throws -> Rect? {
+        try await thread?.runInLoop(.cancellable) { [nsApp, axApp, appId, windows] job in
+            var window: AxWindow? = nil
+            for (id, ax) in axApp.threadGuarded.get(Ax.windowsAttr) ?? [] where id == windowId {
+                window = try windows.threadGuarded.getOrRegisterAxWindow(windowId: id, ax, nsApp, job)
+            }
+            guard let window else { return nil }
+            try job.checkCancellation()
+            if window.ax.getWindowType(axApp: axApp.threadGuarded, appId, nsApp.activationPolicy, windowLevel) != .window { return nil }
+            if window.ax.get(Ax.isFullscreenAttr) == true || window.ax.get(Ax.minimizedAttr) == true { return nil }
+            try job.checkCancellation()
+            return try AppBundle.getAxRect(window: window.ax, job: job)
+        }
+    }
+
+    /// Returns `true` if the window was moved
+    func setAxPositionAndWait(_ windowId: UInt32, _ topLeft: CGPoint, _ cm: CancellationMode) async throws -> Bool {
+        setFrameJobs.removeValue(forKey: windowId)?.cancel()
+        return try await withWindow(windowId, cm) { [axApp] window, job in
+            try disableAnimations(app: axApp.threadGuarded, job) { window.set(Ax.topLeftCornerAttr, topLeft) }
+        } == true
+    }
+
+    /// Lightweight position update for animations
+    func setAxPosition(_ windowId: UInt32, _ topLeft: CGPoint) {
+        setFrameJobs.removeValue(forKey: windowId)?.cancel()
+        setFrameJobs[windowId] = withWindowAsync(windowId, .cancellable) { window, job in
+            window.set(Ax.topLeftCornerAttr, topLeft)
+        }
     }
 
     func setAxFrameForTermination(_ windowId: UInt32, _ topLeft: CGPoint?, _ size: CGSize?) {

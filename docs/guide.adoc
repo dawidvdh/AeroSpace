@@ -342,6 +342,26 @@ positions still take precedence. Moving windows and toggling an existing window
 from floating to tiling do not trigger automatic splitting. Changing the setting
 does not rearrange existing windows.
 
+[#new-window-animation]
+=== New window animation
+
+macOS doesn't allow window managers to control how windows are created. A new window always appears where
+the app puts it, and only then AeroSpace can move it to its tile. By default, AeroSpace resizes the window in place, which
+makes the app visibly redraw itself. `new-window-animation` makes it less abrupt:
+
+* `off` (default). Resize and move the new window in place
+* `place`. Move the new window behind the closest edge of the monitor, resize it there while it isn't visible, and then
+put it to its tile
+* `slide`. The same as `place`, but the window slides to its tile from the edge of the monitor in a short animation.
+Only the position is animated, because apps are slow at redrawing themselves on resize
+* `popin`. The same as `place`, but while the window is not visible, AeroSpace takes a snapshot of it, and smoothly
+scales and fades the snapshot in at the tile. The animation is rendered by GPU, the app doesn't participate in it. Once the
+animation is finished, the real window replaces the snapshot. Requires "Screen Recording" permission to take the
+snapshot. Without the permission, it fallbacks to `slide`
+
+The setting applies only to newly detected tiled windows on visible workspaces. It has no effect if all the suitable
+edges of the monitor are adjacent to other monitors.
+
 [#layouts]
 === Layouts
 

@@ -8,7 +8,9 @@ extension Workspace {
         // If monitors are aligned vertically and the monitor below has smaller width, then macOS may not allow the
         // window on the upper monitor to take full width. rect.height - 1 resolves this problem
         // But I also faced this problem in monitors horizontal configuration. ¯\_(ツ)_/¯
-        try await layoutRecursive(rect.topLeftCorner, width: rect.width, height: rect.height - 1, virtual: rect, LayoutContext(self))
+        let context = LayoutContext(self)
+        try await layoutRecursive(rect.topLeftCorner, width: rect.width, height: rect.height - 1, virtual: rect, context)
+        context.choreography?.start()
     }
 }
 
@@ -35,9 +37,12 @@ extension TreeNode {
                         lastAppliedLayoutPhysicalRect = nil
                         window.layoutFullscreen(context)
                     } else {
+                        let prevPhysicalRect = lastAppliedLayoutPhysicalRect
                         lastAppliedLayoutPhysicalRect = physicalRect
                         window.isFullscreen = false
-                        window.setAxFrame(point, CGSize(width: width, height: height))
+                        if !window.animateLayoutIfNeeded(old: prevPhysicalRect, new: physicalRect, context.workspace, context.choreography) {
+                            window.setAxFrame(point, CGSize(width: width, height: height))
+                        }
                     }
                 }
             case .tilingContainer(let container):
@@ -59,11 +64,13 @@ extension TreeNode {
 private struct LayoutContext {
     let workspace: Workspace
     let resolvedGaps: ResolvedGaps
+    let choreography: NewWindowChoreography?
 
     @MainActor
     init(_ workspace: Workspace) {
         self.workspace = workspace
         self.resolvedGaps = ResolvedGaps(gaps: config.gaps, monitor: workspace.workspaceMonitor)
+        self.choreography = NewWindowChoreography.newIfNeeded(workspace)
     }
 }
 

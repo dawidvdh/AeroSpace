@@ -18,6 +18,19 @@ final class ConfigTest: XCTestCase {
         ])
     }
 
+    func testNewWindowAnimationSetting() {
+        assertEquals(parseConfig("").config.newWindowAnimation, .off)
+        assertEquals(defaultConfig.newWindowAnimation, .off)
+        for (raw, expected) in [("off", NewWindowAnimation.off), ("place", .place), ("slide", .slide), ("popin", .popin)] {
+            let parsed = parseConfig("new-window-animation = '\(raw)'")
+            assertEquals(parsed.errors, [])
+            assertEquals(parsed.config.newWindowAnimation, expected)
+        }
+        assertEquals(parseConfig("new-window-animation = 'fade'").strErrors, [
+            "[ERROR] new-window-animation: Can't parse new window animation 'fade'. Possible values: off, place, slide, popin",
+        ])
+    }
+
     func testParseI3Config() {
         let toml = try! String(contentsOf: projectRoot.appending(component: "docs/config-examples/i3-like-config-example.toml"), encoding: .utf8)
         let result = parseConfig(toml)

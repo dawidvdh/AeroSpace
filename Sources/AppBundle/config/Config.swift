@@ -42,6 +42,7 @@ struct Config: ConvenienceMutable {
     var defaultRootContainerLayout: Layout = .tiles
     var defaultRootContainerOrientation: DefaultContainerOrientation = .auto
     var enableAutoTiling: Bool = false
+    var newWindowAnimation: NewWindowAnimation = .off
     var startAtLogin: Bool = false
     var autoReloadConfig: Bool = false
     var automaticallyUnhideMacosHiddenApps: Bool = false
@@ -81,4 +82,8 @@ enum ConfigVersion: Int, Comparable, CaseIterable, Sendable, CustomStringConvert
 
 enum DefaultContainerOrientation: String {
     case horizontal, vertical, auto
+}
+
+enum NewWindowAnimation: String {
+    case off, place, slide, popin
 }

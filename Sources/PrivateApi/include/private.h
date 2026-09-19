@@ -25,4 +25,10 @@
 // func _AXUIElementGetWindow(_ axUiElement: AXUIElement, _ id: inout CGWindowID) -> AXError
 AXError _AXUIElementGetWindow(AXUIElementRef element, uint32_t *identifier);
 
+// Fast window capture. Used by new window animation. Requires "Screen Recording" permission
+// Reference: https://github.com/lwouis/alt-tab-macos
+typedef uint32_t CGSConnectionID;
+CGSConnectionID CGSMainConnectionID(void);
+CFArrayRef CGSHWCaptureWindowList(CGSConnectionID cid, uint32_t *windowList, uint32_t windowCount, uint32_t options) CF_RETURNS_RETAINED;
+
 #endif

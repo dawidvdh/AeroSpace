@@ -38,6 +38,13 @@ default-root-container-orientation = 'auto'
 # Applies to newly detected tiled windows; works with both normalizations enabled.
 enable-auto-tiling = false
 
+# Possible values: off|place|slide|popin
+# - place: resize new tiled windows off-screen, and then put them to their tile
+# - slide: the same as 'place', but the window slides to its tile from the closest edge of the monitor
+# - popin: the same as 'place', but a snapshot of the window smoothly scales and fades in at the tile
+#          Requires "Screen Recording" permission. Fallbacks to 'slide' without the permission
+new-window-animation = 'off'
+
 # Mouse follows focus when focused monitor changes
 # Drop it from your config, if you don't like this behavior
 # See https://nikitabobko.github.io/AeroSpace/guide#on-focus-changed-callbacks

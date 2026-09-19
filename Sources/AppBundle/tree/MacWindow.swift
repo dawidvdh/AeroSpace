@@ -30,6 +30,7 @@ final class MacWindow: Window {
         let data = unbindAndGetBindingDataForNewWindow(windowType, workspace, window: nil)
         let window = MacWindow(windowId, macApp, lastFloatingSize: rect?.size, parent: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
         allWindowsMap[windowId] = window
+        if windowType == .window && !isStartup { markAsNewWindowForAnimation(windowId) }
 
         try await debugWindowsIfRecording(window, .cancellable)
         if try await !restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window) {
